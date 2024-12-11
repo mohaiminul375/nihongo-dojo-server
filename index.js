@@ -48,7 +48,7 @@ async function run() {
                     return res.status(400).json({ error: 'Email already exists please login' });
                 }
                 // password has by bcrypt
-                const hasPassword = bcrypt.hash(password, 10);
+                const hasPassword = bcrypt.hashSync(password, 10);
                 // insert a new user 
                 const newUser = { user_name, email, img, password: hasPassword, role: 'User' }
                 const result = await usersCollections.insertOne(newUser);
@@ -59,7 +59,30 @@ async function run() {
             }
         })
 
-1
+        // get all user
+        app.get('/all-users', async (req, res) => {
+            const result = await usersCollections.find().toArray() || [];
+            res.send(result);
+        })
+
+
+
+        // login user
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
