@@ -4,11 +4,13 @@ const port = 5000;
 require('dotenv').config();
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 // Middleware & Cors
 app.use(express.json());
 // app.use();
 app.use(cors({ origin: 'http://localhost:3000' }));
-
+app.use(cookieParser());
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ixszr3u.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -35,8 +37,8 @@ async function run() {
         // register/ create a new user
         app.post('/register', async (req, res) => {
             const { user_name, email, img, password } = req.body;
-            console.log(req.body)
-            // field evaluation
+            // console.log(req.body)
+            //  Check if email and password are provide
             if (!user_name || !email || !img || !password) {
                 return res.status(400).json({ error: 'All fields are required' });
             }
@@ -49,6 +51,7 @@ async function run() {
                 }
                 // password has by bcrypt
                 const hasPassword = bcrypt.hashSync(password, 10);
+                // console.log(hasPassword)
                 // insert a new user 
                 const newUser = { user_name, email, img, password: hasPassword, role: 'User' }
                 const result = await usersCollections.insertOne(newUser);
@@ -68,6 +71,49 @@ async function run() {
 
 
         // login user
+        app.post('/login', async (req, res) => {
+            const { email, password } = req.body;
+            console.log(req.body);
+
+            // Check if email and password are provided
+            if (!email || !password) {
+                return res.status(400).json({ error: 'All fields are required' });
+            }
+            try {
+                // Find user by email
+                const user = await usersCollections.findOne({ email });
+                if (!user) {
+                    return res.status(400).json({ error: 'User not found' });
+                }
+                // Compare password with the stored hash
+                const isMatch = await bcrypt.compare(password, user.password);
+                if (!isMatch) {
+                    return res.status(400).json({ error: 'Wrong Password' });
+                }
+                // Remove the password field from the user object
+                const { password: userPassword, ...userInfo } = user;
+
+                // Is JWT_SECRET is set
+                if (!process.env.JWT_SECRET) {
+                    console.log("JWT_SECRET is not defined");
+                    return res.status(500).json({ error: "Internal server error: JWT_SECRET not set" });
+                }
+
+                // Create JWT token
+                const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '12h' });
+                console.log(token);
+
+                // Send the token as a cookie and user info (excluding password)
+                res.cookie('token', token, { httpOnly: true }).json({
+                    message: 'Login successful',
+                    token,
+                    user: userInfo
+                });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
 
 
 
