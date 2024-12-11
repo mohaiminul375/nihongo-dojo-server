@@ -31,7 +31,7 @@ async function run() {
         // collection
         const usersCollections = client.db('nihongo-dojo').collection('all-users')
         const lessonsCollections = client.db('nihongo-dojo').collection('all-lesson')
-
+        const vocabularyCollections = client.db('nihongo-dojo').collection('all-vocabulary');
 
         // admin management
         // user management
@@ -141,7 +141,17 @@ async function run() {
             const result = await lessonsCollections.deleteOne(query);
             res.send(result)
         })
+        // vocabulary management
+        app.get('/all-vocabulary', async (req, res) => {
+            const result = await vocabularyCollections.find().toArray() || [];
+            res.send(result);
+        })
 
+        app.post('/all-vocabulary', async (req, res) => {
+            const newVocabulary = req.body;
+            const result = await vocabularyCollections.insertOne(newVocabulary);
+            res.send(result);
+        })
 
 
 
