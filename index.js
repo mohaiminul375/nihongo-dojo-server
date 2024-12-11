@@ -30,9 +30,10 @@ async function run() {
         // await client.connect();
         // collection
         const usersCollections = client.db('nihongo-dojo').collection('all-users')
+        const lessonsCollections = client.db('nihongo-dojo').collection('all-lesson')
 
 
-
+        // admin management
         // user management
         // register/ create a new user
         app.post('/register', async (req, res) => {
@@ -119,8 +120,19 @@ async function run() {
 
 
 
-
-
+        // lesson management
+        // get all lesson
+        app.get('/all-lesson', async (req, res) => {
+            const result = await lessonsCollections.find().toArray() || [];
+            res.send(result)
+        })
+        // create a lesson
+        app.post('/all-lesson', async (req, res) => {
+            const embed_link = req.body;
+            console.log(embed_link)
+            const result = await lessonsCollections.insertOne(embed_link);
+            res.send(result)
+        })
 
 
 
