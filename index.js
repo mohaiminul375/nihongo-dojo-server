@@ -143,10 +143,17 @@ async function run() {
         })
         // vocabulary management
         app.get('/all-vocabulary', async (req, res) => {
-            const result = await vocabularyCollections.find().toArray() || [];
+            const { lesson_no } = req.query;
+            console.log(lesson_no)
+            let query = {};
+            if (lesson_no) {
+                query.lesson_no = parseFloat(lesson_no)
+            }
+            console.log(query);
+            const result = await vocabularyCollections.find(query).toArray() || [];
             res.send(result);
         })
-
+        // create vocabulary
         app.post('/all-vocabulary', async (req, res) => {
             const newVocabulary = req.body;
             const result = await vocabularyCollections.insertOne(newVocabulary);
