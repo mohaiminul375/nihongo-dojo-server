@@ -232,7 +232,7 @@ async function run() {
 
         // user / Public API
         // get all lesson
-        app.get('/all-lesson-users', async () => {
+        app.get('/all-lesson-users', async (req, res) => {
             try {
                 // Get the lessons and vocabulary collections
                 const vocabulary = await vocabularyCollections.find().toArray();
@@ -261,6 +261,37 @@ async function run() {
                 res.status(500).send("Internal Server Error");
             }
         })
+
+        // get lesson content by lesson_no
+        app.get('/all-lesson-users/:lesson_no', async (req, res) => {
+            try {
+                const lesson_no = parseFloat(req.params.lesson_no);
+                const query = { lesson_no };
+                console.log(query);
+
+                const result = await vocabularyCollections.find(query).toArray() || [];
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching lesson content:", error);
+                res.status(500).send({ error: "An error occurred while fetching lessons content." });
+            }
+        });
+        // get lesson by id
+        app.get('/lesson-heading/:lesson_no', async (req, res) => {
+            try {
+                const lesson_no = parseFloat(req.params.lesson_no);
+                const query = { lesson_no };
+                console.log(query);
+
+                const result = await lessonsCollections.findOne(query);
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching lesson data:", error);
+                res.status(500).send({ error: "An error occurred while fetching lessons." });
+            }
+        })
+
+
 
 
 
