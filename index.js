@@ -229,6 +229,13 @@ async function run() {
             const result = await vocabularyCollections.insertOne(newVocabulary);
             res.send(result);
         })
+        // delete vocabulary
+        app.delete('/all-vocabulary/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await vocabularyCollections.deleteOne(query);
+            res.send(result)
+        })
 
         // user / Public API
         // get all lesson
