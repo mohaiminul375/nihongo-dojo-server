@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 app.use(express.json());
 // app.use();
 app.use(cors({
-    origin: ['http://localhost:3000'],
+    origin: ['http://localhost:3000', 'https://nihongo-dojo-client.vercel.app'],
     credentials: true
 }));
 app.use(cookieParser());
@@ -60,6 +60,7 @@ async function run() {
         // collection
         const usersCollections = client.db('nihongo-dojo').collection('all-users')
         const lessonsCollections = client.db('nihongo-dojo').collection('all-lesson')
+        const tutorialsCollections = client.db('nihongo-dojo').collection('all-tutorials')
         const vocabularyCollections = client.db('nihongo-dojo').collection('all-vocabulary');
 
 
@@ -148,29 +149,66 @@ async function run() {
         });
 
 
-
-
-
-
         // lesson management
         // get all lesson
-        app.get('/all-lesson', authenticateUser, async (req, res) => {
-            const result = await lessonsCollections.find().toArray() || [];
-            res.send(result)
-        })
+        app.get('/all-lesson', async (req, res) => {
+            try {
+                // Get the lessons and vocabulary collections
+                const vocabulary = await vocabularyCollections.find().toArray();
+                const lessons = await lessonsCollections.find().toArray() || [];
+
+                // Create a map for counting lesson_no in the vocabulary collection
+                const lessonNoCounts = vocabulary.reduce((acc, item) => {
+                    const lessonNo = item.lesson_no; // Assuming 'lesson_on' is the lesson number
+                    acc[lessonNo] = (acc[lessonNo] || 0) + 1;
+                    return acc;
+                }, {});
+
+                // Add vocabulary count to each lesson
+                const result = lessons.map(lesson => {
+                    const vocabularyCount = lessonNoCounts[lesson.lesson_no] || 0;
+                    return {
+                        ...lesson,
+                        vocabulary_count: vocabularyCount
+                    };
+                });
+
+                // Send the response with the lessons and vocabulary count
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching lessons:", error);
+                res.status(500).send("Internal Server Error");
+            }
+        });
+
         // create a lesson
         app.post('/all-lesson', async (req, res) => {
+            const new_vocabulary = req.body;
+            const result = await lessonsCollections.insertOne(new_vocabulary);
+            res.send(result);
+        })
+
+
+
+        // tutorial management
+        // get all tutorial
+        app.get('/all-tutorials', authenticateUser, async (req, res) => {
+            const result = await tutorialsCollections.find().toArray() || [];
+            res.send(result)
+        })
+        // create a tutorial
+        app.post('/all-tutorials', async (req, res) => {
             const embed_link = req.body;
             console.log(embed_link)
-            const result = await lessonsCollections.insertOne(embed_link);
+            const result = await tutorialsCollections.insertOne(embed_link);
             res.send(result)
         })
 
-        // delete lesson
-        app.delete('/all-lesson/:id', async (req, res) => {
+        // delete tutorial
+        app.delete('/all-tutorials/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
-            const result = await lessonsCollections.deleteOne(query);
+            const result = await tutorialsCollections.deleteOne(query);
             res.send(result)
         })
         // vocabulary management
@@ -192,6 +230,37 @@ async function run() {
             res.send(result);
         })
 
+        // user / Public API
+        // get all lesson
+        app.get('/all-lesson-users', async () => {
+            try {
+                // Get the lessons and vocabulary collections
+                const vocabulary = await vocabularyCollections.find().toArray();
+                const lessons = await lessonsCollections.find().toArray() || [];
+
+                // Create a map for counting lesson_no in the vocabulary collection
+                const lessonNoCounts = vocabulary.reduce((acc, item) => {
+                    const lessonNo = item.lesson_no; // Assuming 'lesson_on' is the lesson number
+                    acc[lessonNo] = (acc[lessonNo] || 0) + 1;
+                    return acc;
+                }, {});
+
+                // Add vocabulary count to each lesson
+                const result = lessons.map(lesson => {
+                    const vocabularyCount = lessonNoCounts[lesson.lesson_no] || 0;
+                    return {
+                        ...lesson,
+                        vocabulary_count: vocabularyCount
+                    };
+                });
+
+                // Send the response with the lessons and vocabulary count
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching lessons:", error);
+                res.status(500).send("Internal Server Error");
+            }
+        })
 
 
 
