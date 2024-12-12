@@ -18,27 +18,25 @@ app.use(cookieParser());
 // Custom middleWare for Jwt
 // JWT authorization
 const authenticateUser = (req, res, next) => {
-    const token = req.cookies.token; //get cookie form front end
-    console.log(token, 'from middleware')
+    const token = req.headers.authorization?.split(" ")[1]; // Extract token from Authorization header
+    console.log(token)
     if (!token) {
-        return res.status(401).json({ error: 'access denied' });
+        return res.status(401).json({ error: 'Access denied' });
     }
 
     try {
-        // verify token
+        // Decode and verify the token
         const verified = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Attach the user data (like email) to the request object
         req.user = verified;
+        console.log(verified)
+
         next();
     } catch (err) {
-        console.error(err);
         res.status(403).json({ error: 'Unauthorized: Invalid token' });
     }
-
 };
-
-
-
-
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -98,7 +96,6 @@ async function run() {
         })
 
 
-
         // login user
         app.post('/login', async (req, res) => {
             const { email, password } = req.body;
@@ -127,26 +124,44 @@ async function run() {
                         role: user.role,
                         name: user.user_name,
                         img: user.img,
+                        email: user.email,
                     },
                     process.env.JWT_SECRET,
                     { expiresIn: '12h' }
                 );
                 console.log(token)
 
-                res.cookie('token', token, {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production', // set secure flag for production (Vercel uses HTTPS)
-                    sameSite: 'None',
-                    maxAge: 12 * 60 * 60 * 1000,
-                }).send(userInfo);
+                res.json({ token, message: 'Login successful' });
 
-                // Send response (excluding the token in the response body for security)
+
 
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ error: 'Internal server error' });
             }
         });
+        // get user info
+        app.get('/user', authenticateUser, async (req, res) => {
+            try {
+                console.log(req.user, 'req')
+                // Find the user by email (from the decoded JWT)
+                const user = await usersCollections.findOne({ email: req.user.email });
+                console.log(user);
+
+                if (!user) {
+                    return res.status(404).json({ message: "User not found" });
+                }
+
+                // Remove password from the user object
+                const { password, ...userWithoutPassword } = user;
+
+                res.status(200).json({ user: userWithoutPassword });
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: "Error fetching user data" });
+            }
+        });
+
 
 
         // lesson management
@@ -246,7 +261,7 @@ async function run() {
                 res.send(result)
 
             } catch (error) {
-                console.error(error); 
+                console.error(error);
                 res.status(500).json({ message: 'Error updating vocabulary', error: error.message });
             }
         });
