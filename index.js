@@ -266,11 +266,21 @@ async function run() {
         app.get('/all-lesson-users/:lesson_no', async (req, res) => {
             try {
                 const lesson_no = parseFloat(req.params.lesson_no);
+                const page = parseInt(req.query.page) || 1; // Default to page 1 if not specified
+                const limit = 1; // 1 card per page
                 const query = { lesson_no };
                 console.log(query);
+                // Calculate the skip value
+                const skip = (page - 1) * limit;
+                const result = await vocabularyCollections.find(query).skip(skip).limit(limit).toArray() || [];
+                const totalCount = await vocabularyCollections.countDocuments(query);
 
-                const result = await vocabularyCollections.find(query).toArray() || [];
-                res.send(result);
+                res.send({
+                    data: result,
+                    currentPage: page,
+                    totalPages: Math.ceil(totalCount / limit),
+                    totalCount,
+                });
             } catch (error) {
                 console.error("Error fetching lesson content:", error);
                 res.status(500).send({ error: "An error occurred while fetching lessons content." });
