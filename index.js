@@ -229,6 +229,30 @@ async function run() {
             const result = await vocabularyCollections.insertOne(newVocabulary);
             res.send(result);
         })
+        // update vocabulary
+
+        app.patch('/all-vocabulary/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const update_info = req.body;
+                const query = { _id: new ObjectId(id) };
+                console.log(query)
+                const update_Doc = {
+                    $set: { ...update_info },
+                };
+
+                const result = await vocabularyCollections.updateOne(query, update_Doc);
+                console.log(result)
+                res.send(result)
+
+            } catch (error) {
+                console.error(error); 
+                res.status(500).json({ message: 'Error updating vocabulary', error: error.message });
+            }
+        });
+
+
+
         // delete vocabulary
         app.delete('/all-vocabulary/:id', async (req, res) => {
             const id = req.params.id;
@@ -307,7 +331,26 @@ async function run() {
                 res.status(500).send({ error: "An error occurred while fetching lessons." });
             }
         })
+        // update a lesson
+        app.patch('/all-lesson/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const update_info = req.body;
+                const query = { _id: new ObjectId(id) };
+                console.log(query)
+                const update_Doc = {
+                    $set: { ...update_info },
+                };
 
+                const result = await lessonsCollections.updateOne(query, update_Doc);
+                console.log(result)
+                res.send(result)
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: 'Error updating Lesson', error: error.message });
+            }
+        });
         // delete lesson
         app.delete('/all-lesson/:id', async (req, res) => {
             const id = req.params.id;
