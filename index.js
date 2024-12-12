@@ -9,8 +9,37 @@ const jwt = require('jsonwebtoken');
 // Middleware & Cors
 app.use(express.json());
 // app.use();
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({
+    origin: ['http://localhost:3000'],
+    credentials: true
+}));
 app.use(cookieParser());
+
+// Custom middleWare for Jwt
+// JWT authorization
+const authenticateUser = (req, res, next) => {
+    const token = req.cookies.token; //get cookie form front end
+    console.log(token, 'from middleware')
+    if (!token) {
+        return res.status(401).json({ error: 'access denied' });
+    }
+
+    try {
+        // verify token
+        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = verified;
+        next();
+    } catch (err) {
+        console.error(err);
+        res.status(403).json({ error: 'Unauthorized: Invalid token' });
+    }
+
+};
+
+
+
+
+
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ixszr3u.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -33,17 +62,16 @@ async function run() {
         const lessonsCollections = client.db('nihongo-dojo').collection('all-lesson')
         const vocabularyCollections = client.db('nihongo-dojo').collection('all-vocabulary');
 
+
         // admin management
         // user management
         // register/ create a new user
         app.post('/register', async (req, res) => {
             const { user_name, email, img, password } = req.body;
-            // console.log(req.body)
             //  Check if email and password are provide
             if (!user_name || !email || !img || !password) {
                 return res.status(400).json({ error: 'All fields are required' });
             }
-
             try {
                 // is user existed
                 const isExisted = await usersCollections.findOne({ email });
@@ -52,7 +80,6 @@ async function run() {
                 }
                 // password has by bcrypt
                 const hasPassword = bcrypt.hashSync(password, 10);
-                // console.log(hasPassword)
                 // insert a new user 
                 const newUser = { user_name, email, img, password: hasPassword, role: 'User' }
                 const result = await usersCollections.insertOne(newUser);
@@ -74,9 +101,8 @@ async function run() {
         // login user
         app.post('/login', async (req, res) => {
             const { email, password } = req.body;
-            console.log(req.body);
 
-            // Check if email and password are provided
+            // Validate request body
             if (!email || !password) {
                 return res.status(400).json({ error: 'All fields are required' });
             }
@@ -86,30 +112,35 @@ async function run() {
                 if (!user) {
                     return res.status(400).json({ error: 'User not found' });
                 }
+
                 // Compare password with the stored hash
                 const isMatch = await bcrypt.compare(password, user.password);
                 if (!isMatch) {
-                    return res.status(400).json({ error: 'Wrong Password' });
+                    return res.status(400).json({ error: 'Invalid credentials' });
                 }
-                // Remove the password field from the user object
-                const { password: userPassword, ...userInfo } = user;
+                const { password: usePassword, ...userInfo } = user;
+                // Generate JWT token
+                const token = jwt.sign(
+                    {
+                        id: user._id,
+                        role: user.role,
+                        name: user.user_name,
+                        img: user.img,
+                    },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '12h' }
+                );
+                console.log(token)
 
-                // Is JWT_SECRET is set
-                if (!process.env.JWT_SECRET) {
-                    console.log("JWT_SECRET is not defined");
-                    return res.status(500).json({ error: "Internal server error: JWT_SECRET not set" });
-                }
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production', // set secure flag for production (Vercel uses HTTPS)
+                    sameSite: 'None',
+                    maxAge: 12 * 60 * 60 * 1000,
+                }).send(userInfo);
 
-                // Create JWT token
-                const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '12h' });
-                console.log(token);
+                // Send response (excluding the token in the response body for security)
 
-                // Send the token as a cookie and user info (excluding password)
-                res.cookie('token', token, { httpOnly: true }).json({
-                    message: 'Login successful',
-                    token,
-                    user: userInfo
-                });
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ error: 'Internal server error' });
@@ -120,9 +151,10 @@ async function run() {
 
 
 
+
         // lesson management
         // get all lesson
-        app.get('/all-lesson', async (req, res) => {
+        app.get('/all-lesson', authenticateUser, async (req, res) => {
             const result = await lessonsCollections.find().toArray() || [];
             res.send(result)
         })
