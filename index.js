@@ -161,7 +161,42 @@ async function run() {
                 res.status(500).json({ message: "Error fetching user data" });
             }
         });
-
+        // update role
+        app.patch('/update-users/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { value } = req.body;
+                const query = { _id: new ObjectId(id) };
+                const update = { $set: { role: value } };
+                const result = await usersCollections.updateOne(query, update);
+                res.send(result)
+            } catch (error) {
+                console.error('Error updating user role:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        })
+        // 
+        app.put('/update-status/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const { status } = req.body;
+                const query = { _id: new ObjectId(id) };
+                const option = { upsert: true }
+                const update = { $set: { status: status } };
+                const result = await usersCollections.updateOne(query, update, option);
+                res.send(result)
+            } catch (error) {
+                console.error('Error updating status:', error);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        })
+        // delete user
+        app.delete('/all-users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await usersCollections.deleteOne(query);
+            res.send(result);
+        })
 
 
         // lesson management
