@@ -242,7 +242,7 @@ async function run() {
 
         // tutorial management
         // get all tutorial
-        app.get('/all-tutorials', authenticateUser, async (req, res) => {
+        app.get('/all-tutorials', async (req, res) => {
             const result = await tutorialsCollections.find().toArray() || [];
             res.send(result)
         })
