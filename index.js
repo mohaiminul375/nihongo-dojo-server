@@ -60,6 +60,7 @@ async function run() {
         const lessonsCollections = client.db('nihongo-dojo').collection('all-lesson')
         const tutorialsCollections = client.db('nihongo-dojo').collection('all-tutorials')
         const vocabularyCollections = client.db('nihongo-dojo').collection('all-vocabulary');
+        const progressCollections = client.db('nihongo-dojo').collection('all-progress');
 
 
         // admin management
@@ -238,6 +239,16 @@ async function run() {
             res.send(result);
         })
 
+        // Dropdown lesson
+        app.get('/all-lesson-filter', async (req, res) => {
+            try {
+                const result = await lessonsCollections.find({}, { projection: { lesson_name: 1, lesson_no: 1, _id: 0 } }).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching lessons:', error);
+                res.status(500).send('Internal Server Error');
+            }
+        });
 
 
         // tutorial management
@@ -308,6 +319,40 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await vocabularyCollections.deleteOne(query);
+            res.send(result)
+        })
+        // Progress Management
+        app.post('/progress', async (req, res) => {
+            try {
+                const newProgress = req.body;
+                const query = { email: newProgress.email };
+                const isExisted = await progressCollections.findOne(query);
+
+                if (!isExisted) {
+                    // If the user doesn't exist, create a new document
+                    const newUserProgress = {
+                        email: newProgress.email,
+                        lessons: [newProgress.lesson],
+                    };
+                    const result = await progressCollections.insertOne(newUserProgress);
+                    res.status(201).send({ message: 'New progress added', result });
+                } else {
+                    // If the user exists, update their lessons array
+                    const updateDoc = {
+                        $push: {
+                            lessons: newProgress.lesson, // Append new progress to the lessons array
+                        },
+                    };
+                    const result = await progressCollections.updateOne(query, updateDoc);
+                    res.status(200).send({ message: 'Progress updated', result });
+                }
+            } catch (error) {
+                console.error('Error updating progress:', error);
+                res.status(500).send('Internal Server Error');
+            }
+        });
+        app.get('/progress', async (req, res) => {
+            const result = await progressCollections.find().toArray() || [];
             res.send(result)
         })
 
