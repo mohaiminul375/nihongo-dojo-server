@@ -355,6 +355,13 @@ async function run() {
             const result = await progressCollections.find().toArray() || [];
             res.send(result)
         })
+        // get progress by email
+        app.get('/progress/:email', async (req, res) => {
+            const email = req.params.email;
+            const result = await progressCollections.findOne({ email: email });
+            res.send(result)
+
+        })
 
         // user / Public API
         // get all lesson
